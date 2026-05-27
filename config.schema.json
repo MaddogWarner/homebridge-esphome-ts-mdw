@@ -1,0 +1,87 @@
+{
+  "pluginAlias": "ESPHomeMDW",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "required": true,
+        "default": "ESPHome"
+      },
+      "discovery": {
+        "title": "Enable mDNS Discovery",
+        "type": "boolean",
+        "default": true,
+        "description": "Auto-discover ESPHome devices on the local network via mDNS (_esphomelib._tcp)."
+      },
+      "reconnectInterval": {
+        "title": "Reconnect Interval (seconds)",
+        "type": "integer",
+        "default": 30,
+        "minimum": 5,
+        "description": "Base interval before reconnection attempt. Doubles on each failure, capped at 5 minutes."
+      },
+      "devices": {
+        "title": "Devices",
+        "type": "array",
+        "items": {
+          "title": "Device",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "title": "Host",
+              "type": "string",
+              "required": true,
+              "placeholder": "touch-panel-1.local",
+              "description": "Hostname or IP address of the ESPHome device."
+            },
+            "port": {
+              "title": "Port",
+              "type": "integer",
+              "default": 6053,
+              "description": "ESPHome native API port (default 6053)."
+            },
+            "encryptionKey": {
+              "title": "Encryption Key (PSK)",
+              "type": "string",
+              "description": "Base64-encoded 32-byte pre-shared key from ESPHome api.encryption.key. Leave blank for plaintext."
+            },
+            "password": {
+              "title": "Legacy Password",
+              "type": "string",
+              "description": "Legacy ESPHome API password. Currently unsupported by esphome-client 1.3.0; prefer Noise encryption via encryptionKey."
+            },
+            "name": {
+              "title": "Override Name",
+              "type": "string",
+              "description": "Optional display name override for this device."
+            },
+            "entities": {
+              "title": "Entity Filters",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "include": {
+                  "title": "Include Only",
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Whitelist of entity objectIds to expose. If empty, all entities included."
+                },
+                "exclude": {
+                  "title": "Exclude",
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Blacklist of entity objectIds to hide."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

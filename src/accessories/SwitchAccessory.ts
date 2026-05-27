@@ -1,0 +1,38 @@
+import type { PlatformAccessory, Service } from 'homebridge';
+import { BaseAccessory } from './BaseAccessory.js';
+import type { ESPHomePlatform } from '../platform.js';
+import type { DeviceRef } from '../device.js';
+
+export interface SwitchStateData {
+  entity: string;
+  state?: boolean;
+}
+
+export class SwitchAccessory extends BaseAccessory {
+  private readonly service: Service;
+
+  constructor(platform: ESPHomePlatform, accessory: PlatformAccessory) {
+    super(platform, accessory);
+
+    this.service = accessory.getService(this.Service.Switch)
+      ?? accessory.addService(this.Service.Switch);
+
+    this.service.setCharacteristic(
+      this.Characteristic.Name,
+      accessory.context['displayName'] as string,
+    );
+
+    this.service.getCharacteristic(this.Characteristic.On)
+      .onSet(async (value) => {
+        const ref = accessory.context['deviceRef'] as DeviceRef | undefined;
+        ref?.sendSwitchCommand(accessory.context['entityId'] as string, value as boolean);
+      });
+  }
+
+  handleStateUpdate(data: unknown): void {
+    const d = data as SwitchStateData;
+    if (d.state !== undefined) {
+      this.service.updateCharacteristic(this.Characteristic.On, d.state);
+    }
+  }
+}

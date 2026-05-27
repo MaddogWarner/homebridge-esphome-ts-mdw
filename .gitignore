@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# npm
+*.tgz
+.npm-cache/
+npm-debug.log*
+.npmrc
+
+# Environment / secrets
+.env
+.env.*
+secrets.yaml
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test output
+coverage/
+
+# Internal dev files
+codex-plan.md
+issues.md
+
+# Misc
+*.log

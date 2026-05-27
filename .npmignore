@@ -1,0 +1,6 @@
+node_modules/
+.npm-cache/
+*.tgz
+codex-plan.md
+CLAUDE.md
+AGENTS.md
