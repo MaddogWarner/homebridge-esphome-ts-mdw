@@ -7,7 +7,7 @@ A modern [Homebridge](https://homebridge.io) 2.0 plugin that bridges [ESPHome](h
 This plugin connects ESPHome devices running the native API to Apple HomeKit via Homebridge. It auto-discovers devices on your local network using mDNS and maps ESPHome entity types to HomeKit services:
 
 | ESPHome Entity | HomeKit Service |
-|---|---|
+| --- | --- |
 | `button` | StatelessProgrammableSwitch |
 | `switch` | Switch |
 | `light` | Lightbulb (on/off, brightness, RGB, colour temperature) |
@@ -22,7 +22,7 @@ This plugin connects ESPHome devices running the native API to Apple HomeKit via
 
 The primary motivation for this plugin is ESP32 multi-button touch panels. All buttons on a single ESPHome device appear as a single HomeKit accessory containing multiple programmable switch tiles — one per button. Each tile can trigger scenes, automations, or control other accessories directly from Apple Home or Siri.
 
-```
+```text
 HomeKit Accessory: "Living Room Panel"
   ├── Button 1 → StatelessProgrammableSwitch (scene: Good Morning)
   ├── Button 2 → StatelessProgrammableSwitch (scene: Movie Time)
@@ -33,7 +33,7 @@ HomeKit Accessory: "Living Room Panel"
 
 This plugin was designed and built by:
 
-- **David Warner** ([@maddogwarner](https://github.com/maddogwarner)) — project owner, architecture direction, requirements, and testing.
+- **MadDogWarner** ([@maddogwarner](https://github.com/maddogwarner)) — project owner, architecture direction, requirements, and testing.
 - **Claude** (Anthropic) — system architecture, technical design, ESPHome/HAP mapping decisions, code review, and documentation.
 - **Codex** (OpenAI) — implementation of all TypeScript source files from the architecture specification.
 
@@ -168,7 +168,7 @@ Add the platform to your Homebridge `config.json`. With `discovery` enabled (the
 ### Configuration Options
 
 | Option | Type | Default | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `name` | string | `"ESPHome"` | Platform display name |
 | `discovery` | boolean | `true` | Auto-discover ESPHome devices via mDNS (`_esphomelib._tcp`) |
 | `reconnectInterval` | integer (seconds) | `30` | Base reconnect delay. Doubles on each failure, capped at 5 minutes |
@@ -177,7 +177,7 @@ Add the platform to your Homebridge `config.json`. With `discovery` enabled (the
 ### Per-Device Options
 
 | Option | Type | Required | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `host` | string | Yes | Hostname (e.g. `panel.local`) or IP address of the ESPHome device |
 | `port` | integer | No | Native API port. Defaults to `6053` |
 | `encryptionKey` | string | Recommended | Base64-encoded 32-byte PSK from `api.encryption.key` in your ESPHome YAML |
@@ -222,25 +222,25 @@ The delay resets to the base interval on successful reconnection.
 
 ## Troubleshooting
 
-**Devices not appearing in HomeKit**
+### Devices not appearing in HomeKit
 
 - Confirm the ESPHome native API is enabled in the device YAML (`api:` block present)
 - Check the device is reachable: `ping living-room-panel.local`
 - Verify the `encryptionKey` matches `api.encryption.key` in your ESPHome YAML exactly
 - Enable Homebridge debug logging and look for `[ESPHome]` log lines
 
-**Buttons not triggering automations**
+### Buttons not triggering automations
 
 - Ensure the button entity fires a press event in ESPHome logs
 - In Apple Home, open the tile and confirm the automation is set to trigger on "Single Press"
 - `ProgrammableSwitchEvent` is event-only — it does not have a readable state, which is expected behaviour
 
-**Light colour changes not working**
+### Light colour changes not working
 
 - RGB and colour temperature are sent as separate commands; confirm the ESPHome light entity supports the relevant colour mode
 - Check ESPHome logs for any rejected light commands
 
-**Device keeps reconnecting**
+### Device keeps reconnecting
 
 - If the encryption key is wrong the connection will be refused — verify the key
 - Check for network issues or DHCP address changes; using `.local` mDNS hostnames is more reliable than IP addresses
