@@ -5,6 +5,7 @@ export interface DiscoveredDevice {
   host: string;
   port: number;
   name: string;
+  addresses: string[];
 }
 
 export type DiscoveryCallback = (device: DiscoveredDevice) => void;
@@ -34,7 +35,7 @@ export class ESPHomeDiscovery {
         }
 
         this.log.info(`mDNS: discovered ESPHome device "${service.name}" at ${host}:${port}`);
-        onDevice({ host, port, name: service.name });
+        onDevice({ host, port, name: service.name, addresses: service.addresses ?? [] });
       },
     );
     this.browser.start();

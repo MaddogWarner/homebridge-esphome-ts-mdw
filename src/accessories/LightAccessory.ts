@@ -2,7 +2,7 @@ import { ColorMode } from 'esphome-client';
 import type { PlatformAccessory, Service } from 'homebridge';
 import { BaseAccessory } from './BaseAccessory.js';
 import type { ESPHomePlatform } from '../platform.js';
-import type { DeviceRef, LightCommandOptions } from '../device.js';
+import type { LightCommandOptions } from '../device.js';
 
 export interface LightStateData {
   entity: string;
@@ -28,7 +28,7 @@ export class LightAccessory extends BaseAccessory {
       accessory.context['displayName'] as string,
     );
 
-    const ref = () => accessory.context['deviceRef'] as DeviceRef | undefined;
+    const ref = () => this.platform.getDeviceRef(accessory);
     const entityId = () => accessory.context['entityId'] as string;
 
     this.service.getCharacteristic(this.Characteristic.On)

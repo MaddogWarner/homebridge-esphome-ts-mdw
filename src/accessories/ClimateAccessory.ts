@@ -2,7 +2,6 @@ import { ClimateAction, ClimateMode } from 'esphome-client';
 import type { PlatformAccessory, Service } from 'homebridge';
 import { BaseAccessory } from './BaseAccessory.js';
 import type { ESPHomePlatform } from '../platform.js';
-import type { DeviceRef } from '../device.js';
 
 export interface ClimateStateData {
   entity: string;
@@ -26,7 +25,7 @@ export class ClimateAccessory extends BaseAccessory {
       accessory.context['displayName'] as string,
     );
 
-    const ref = () => accessory.context['deviceRef'] as DeviceRef | undefined;
+    const ref = () => this.platform.getDeviceRef(accessory);
     const entityId = () => accessory.context['entityId'] as string;
 
     this.service.getCharacteristic(this.Characteristic.Active)

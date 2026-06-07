@@ -1,7 +1,6 @@
 import type { PlatformAccessory, Service } from 'homebridge';
 import { BaseAccessory } from './BaseAccessory.js';
 import type { ESPHomePlatform } from '../platform.js';
-import type { DeviceRef } from '../device.js';
 
 export interface SwitchStateData {
   entity: string;
@@ -24,7 +23,7 @@ export class SwitchAccessory extends BaseAccessory {
 
     this.service.getCharacteristic(this.Characteristic.On)
       .onSet(async (value) => {
-        const ref = accessory.context['deviceRef'] as DeviceRef | undefined;
+        const ref = this.platform.getDeviceRef(accessory);
         ref?.sendSwitchCommand(accessory.context['entityId'] as string, value as boolean);
       });
   }

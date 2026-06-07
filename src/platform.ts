@@ -23,6 +23,9 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
   private readonly accessoryControllers = new Map<string, BaseAccessory>();
   private readonly devices = new Map<string, ESPHomeDevice>();
   private readonly deviceInfo = new Map<string, { name?: string; esphomeVersion?: string; model?: string; macAddress?: string }>();
+  // Live device ref per accessory. Kept here (not in accessory.context) because
+  // Homebridge JSON-serialises context to disk and an ESPHomeDevice is circular.
+  private readonly deviceRefs = new WeakMap<PlatformAccessory, DeviceRef>();
   private discovery: ESPHomeDiscovery | null = null;
 
   constructor(
@@ -53,6 +56,10 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
   configureAccessory(accessory: PlatformAccessory): void {
     this.log.info('Restoring cached accessory:', accessory.displayName);
     this.cachedAccessories.push(accessory);
+  }
+
+  getDeviceRef(accessory: PlatformAccessory): DeviceRef | undefined {
+    return this.deviceRefs.get(accessory);
   }
 
   registerEntityAccessory(
@@ -125,11 +132,16 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     if (this.platformConfig.discovery !== false) {
       this.discovery = new ESPHomeDiscovery(this.log);
       this.discovery.start((discovered) => {
-        const alreadyConfigured = configDevices.some(d => d.host === discovered.host);
-        if (!alreadyConfigured) {
-          this.log.info(`Auto-discovered: ${discovered.name} at ${discovered.host}:${discovered.port}`);
-          this.connectDevice({ host: discovered.host, port: discovered.port, name: discovered.name });
+        // A configured device may be listed by IP while mDNS advertises it by
+        // hostname (or vice versa). Match on every identity the discovery
+        // resolved so we don't open a second, keyless connection to it.
+        const identities = [discovered.host, ...discovered.addresses];
+        const alreadyConfigured = configDevices.some(d => identities.includes(d.host));
+        if (alreadyConfigured || this.devices.has(discovered.host)) {
+          return;
         }
+        this.log.info(`Auto-discovered: ${discovered.name} at ${discovered.host}:${discovered.port}`);
+        this.connectDevice({ host: discovered.host, port: discovered.port, name: discovered.name });
       });
     }
   }
@@ -151,7 +163,7 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     entityId: string,
     displayName: string,
   ): void {
-    accessory.context['deviceRef'] = device;
+    this.deviceRefs.set(accessory, device);
     accessory.context['entityId'] = entityId;
     accessory.context['entityType'] = entity.type;
     accessory.context['entityObjectId'] = entity.objectId;

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-06-07
+
+### Fixed
+
+- Auto-discovery no longer opens a second, unencrypted connection to a device that is already configured by IP when mDNS advertises it by hostname. Discovered devices are now matched against configured hosts by both hostname and resolved IP addresses.
+- Accessories persist across restarts again. The live device handle was stored in the HomeKit accessory context, which Homebridge serialises to disk — causing "Do not know how to serialize a BigInt" and circular-structure errors. It is now held outside the serialised context and resolved via the platform.
+
 ### Added
 
 - GitHub Actions CI workflow for push and pull request validation on Node.js 22 and 24.

@@ -58,7 +58,7 @@ export class ESPHomeDevice implements DeviceRef {
     this.client = new EspHomeClient(options);
 
     this.client.on('connect', ({ encrypted }) => {
-      this.log.info(`Connected to ${this.config.host} (encrypted=${encrypted})`);
+      this.log.info(`Connected to ${this.config.host} (encrypted=${encrypted ?? 'unknown'})`);
       this.resetReconnectDelay();
     });
 
