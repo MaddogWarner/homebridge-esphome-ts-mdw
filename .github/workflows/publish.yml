@@ -4,6 +4,7 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -48,7 +49,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Debug OIDC availability
+        run: |
+          echo "OIDC request URL present: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          echo "npm version: $(npm --version)"
+          echo "whoami (expected to fail):"; npm whoami || true
+
       # Trusted publishing authenticates via OIDC and generates provenance
       # automatically — no token and no --provenance flag required.
       - name: Publish to npm
-        run: npm publish --access public
+        run: npm publish --access public --loglevel verbose
