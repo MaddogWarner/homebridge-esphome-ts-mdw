@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-06-07
+
+### Fixed
+
+- Switch entities now update HomeKit to OFF when ESPHome emits a keyed switch event without an explicit boolean `state` field. This covers device-side template switch toggles where protobuf default false values may be omitted from the state payload.
+
 ## [1.0.3] - 2026-06-07
 
 ### Fixed

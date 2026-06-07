@@ -235,6 +235,12 @@ The delay resets to the base interval on successful reconnection.
 - In Apple Home, open the tile and confirm the automation is set to trigger on "Single Press"
 - `ProgrammableSwitchEvent` is event-only — it does not have a readable state, which is expected behaviour
 
+### Template switches turn on but not off
+
+- Update to version 1.0.4 or later if ESPHome template switches turn ON in Homebridge/HomeKit but do not return to OFF after a second device-side touch.
+- ESPHome may omit default boolean `false` values from switch state telemetry; current versions normalise a keyed switch event without `state` to OFF.
+- Enable Homebridge debug logging and confirm the switch state update line shows `OFF` for the affected entity.
+
 ### Light colour changes not working
 
 - RGB and colour temperature are sent as separate commands; confirm the ESPHome light entity supports the relevant colour mode

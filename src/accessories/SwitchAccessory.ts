@@ -30,8 +30,10 @@ export class SwitchAccessory extends BaseAccessory {
 
   handleStateUpdate(data: unknown): void {
     const d = data as SwitchStateData;
-    if (d.state !== undefined) {
-      this.service.updateCharacteristic(this.Characteristic.On, d.state);
-    }
+    const state = d.state ?? false;
+    const displayName = this.accessory.context['displayName'] as string;
+
+    this.log.debug(`Switch ${displayName} state update: ${state ? 'ON' : 'OFF'}`);
+    this.service.updateCharacteristic(this.Characteristic.On, state);
   }
 }
