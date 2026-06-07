@@ -1,7 +1,7 @@
 {
   "displayName": "ESPHome MDW",
   "name": "homebridge-esphome-ts-mdw",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Homebridge 2.0 plugin for ESPHome devices. Bridges ESP32 touch panels and other ESPHome entities to Apple HomeKit.",
   "license": "Apache-2.0",
   "repository": {

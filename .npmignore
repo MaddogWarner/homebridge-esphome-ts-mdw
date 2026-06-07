@@ -1,5 +1,6 @@
 node_modules/
 .npm-cache/
+.github/
 *.tgz
 codex-plan.md
 CLAUDE.md

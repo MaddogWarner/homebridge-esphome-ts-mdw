@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- GitHub Actions CI workflow for push and pull request validation on Node.js 22 and 24.
+- GitHub Actions npm publish workflow using Trusted Publishing/OIDC provenance on GitHub Release publication.
+
 ## [1.0.1] - 2026-05-27
 
 ### Changed
