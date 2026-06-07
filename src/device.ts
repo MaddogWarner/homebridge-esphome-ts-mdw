@@ -10,7 +10,7 @@ export type LightCommandOptions = Parameters<EspHomeClient['sendLightCommand']>[
 export type ClimateCommandOptions = Parameters<EspHomeClient['sendClimateCommand']>[1];
 
 export interface DeviceRef {
-  registerAccessory(entityId: string, acc: BaseAccessory): void;
+  registerAccessory(entityKey: number, acc: BaseAccessory): void;
   sendSwitchCommand(entityId: string, state: boolean): void;
   sendLightCommand(entityId: string, opts: LightCommandOptions): void;
   sendClimateCommand(entityId: string, opts: ClimateCommandOptions): void;
@@ -22,7 +22,11 @@ export class ESPHomeDevice implements DeviceRef {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private currentReconnectDelay: number;
   private destroyed = false;
-  private readonly accessories = new Map<string, BaseAccessory>();
+  // Keyed by the numeric entity key, not the id string: esphome-client emits
+  // state events with `.entity` set to the friendly name (e.g. "Panel Switch 1")
+  // rather than the "{type}-{object_id}" id, but `.key` is stable across both
+  // the entity list and every state event.
+  private readonly accessories = new Map<number, BaseAccessory>();
   private readonly entityFilter: EntityFilter;
 
   constructor(
@@ -78,7 +82,7 @@ export class ESPHomeDevice implements DeviceRef {
 
     for (const eventType of ['sensor', 'binary_sensor', 'switch', 'light', 'climate', 'button'] as const) {
       this.client.on(eventType, (data) => {
-        this.accessories.get(data.entity)?.handleStateUpdate(data);
+        this.accessories.get(data.key)?.handleStateUpdate(data);
       });
     }
 
@@ -92,8 +96,8 @@ export class ESPHomeDevice implements DeviceRef {
     this.client.connect();
   }
 
-  registerAccessory(entityId: string, acc: BaseAccessory): void {
-    this.accessories.set(entityId, acc);
+  registerAccessory(entityKey: number, acc: BaseAccessory): void {
+    this.accessories.set(entityKey, acc);
   }
 
   sendSwitchCommand(entityId: string, state: boolean): void {

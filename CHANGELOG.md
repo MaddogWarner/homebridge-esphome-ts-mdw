@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-06-07
+
+### Fixed
+
+- Entity state changes now reach HomeKit. State events were routed by the `{type}-{object_id}` id, but `esphome-client` emits state events with `entity` set to the friendly name (e.g. `Panel Switch 1`) rather than the id, so the lookup always missed and on-device changes were never reflected. Routing now uses the stable numeric entity `key`, which is present on both the entity list and every state event — so a physical touch-panel button press (or any device-side change) updates the HomeKit accessory.
+
 ## [1.0.2] - 2026-06-07
 
 ### Fixed

@@ -103,7 +103,7 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     const acc = createAccessory(this, accessory, entity, filter, buttonIndex);
     if (acc !== null) {
       this.accessoryControllers.set(controllerKey, acc);
-      device.registerAccessory(entityId, acc);
+      device.registerAccessory(entity.key, acc);
     }
   }
 
