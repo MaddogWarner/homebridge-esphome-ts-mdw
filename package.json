@@ -6,10 +6,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/maddogwarner/homebridge-esphome-ts-mdw.git"
+    "url": "git+https://github.com/MaddogWarner/homebridge-esphome-ts-mdw.git"
   },
   "bugs": {
-    "url": "https://github.com/maddogwarner/homebridge-esphome-ts-mdw/issues"
+    "url": "https://github.com/MaddogWarner/homebridge-esphome-ts-mdw/issues"
   },
   "engines": {
     "node": "^22 || ^24",
