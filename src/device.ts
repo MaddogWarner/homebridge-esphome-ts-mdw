@@ -71,13 +71,20 @@ export class ESPHomeDevice implements DeviceRef {
     });
 
     this.client.on('entities', (entities: Entity[]) => {
+      const claimedUuids = new Set<string>();
       let buttonIndex = 0;
       for (const entity of entities) {
         if (entity.type === 'button' || (entity.type === 'switch' && isStatelessSwitch(entity.objectId, this.config))) {
           buttonIndex++;
         }
-        this.platform.registerEntityAccessory(this, entity, this.entityFilter, buttonIndex);
+        const uuid = this.platform.registerEntityAccessory(this, entity, this.entityFilter, buttonIndex);
+        if (uuid !== undefined) {
+          claimedUuids.add(uuid);
+        }
       }
+      // Prune any cached accessories this device no longer advertises (migrated,
+      // renamed, excluded, or left over from a previous host identity).
+      this.platform.reconcileDeviceAccessories(this.config.host, claimedUuids);
     });
 
     for (const eventType of ['sensor', 'binary_sensor', 'switch', 'light', 'climate', 'button'] as const) {

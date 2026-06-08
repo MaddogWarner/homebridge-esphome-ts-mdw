@@ -73,10 +73,10 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     entity: ESPHomeEntityInfo,
     filter: EntityFilter,
     buttonIndex: number,
-  ): void {
+  ): string | undefined {
     if (!entityPassesFilter(entity.objectId, filter)) {
       this.log.debug(`Entity ${entity.type}-${entity.objectId} filtered out.`);
-      return;
+      return undefined;
     }
 
     const entityId = `${entity.type}-${entity.objectId}`;
@@ -90,10 +90,6 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     const accessoryDisplayName = programmableEntity
       ? (device.config.name ?? `${device.config.host} Buttons`)
       : entityDisplayName;
-
-    if (statelessSwitch) {
-      this.unregisterStaleStatefulSwitch(device.config.host, entityId);
-    }
 
     let accessory = this.cachedAccessories.find(a => a.UUID === uuid);
 
@@ -124,6 +120,8 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
       this.accessoryControllers.set(controllerKey, acc);
       device.registerAccessory(entity.key, acc);
     }
+
+    return uuid;
   }
 
   updateDeviceContext(
@@ -175,19 +173,51 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     device.connect();
   }
 
-  private unregisterStaleStatefulSwitch(host: string, entityId: string): void {
-    const statefulUuid = this.api.hap.uuid.generate(`${host}-${entityId}`);
-    const staleAccessory = this.cachedAccessories.find(a => a.UUID === statefulUuid);
-    if (!staleAccessory) {
+  // Remove cached accessories a device no longer advertises. Called only after a
+  // device successfully reports its entity list, so an offline device never has
+  // its accessories pruned. This subsumes the old stateful->stateless switch
+  // cleanup and also covers renamed/excluded entities and host-identity drift.
+  reconcileDeviceAccessories(host: string, claimedUuids: ReadonlySet<string>): void {
+    const stale = this.cachedAccessories.filter(
+      accessory => this.accessoryBelongsToDevice(accessory, host) && !claimedUuids.has(accessory.UUID),
+    );
+    if (stale.length === 0) {
       return;
     }
 
-    this.log.info(`Removing stale stateful switch accessory: ${staleAccessory.displayName}`);
-    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [staleAccessory]);
-    const staleIndex = this.cachedAccessories.indexOf(staleAccessory);
-    if (staleIndex >= 0) {
-      this.cachedAccessories.splice(staleIndex, 1);
+    for (const accessory of stale) {
+      this.log.info(`Removing stale accessory: ${accessory.displayName}`);
+      for (const [key, controller] of this.accessoryControllers) {
+        if (key.startsWith(`${accessory.UUID}-`)) {
+          controller.destroy();
+          this.accessoryControllers.delete(key);
+        }
+      }
+      const index = this.cachedAccessories.indexOf(accessory);
+      if (index >= 0) {
+        this.cachedAccessories.splice(index, 1);
+      }
     }
+
+    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, stale);
+  }
+
+  private accessoryBelongsToDevice(accessory: PlatformAccessory, host: string): boolean {
+    const accessoryHost = accessory.context['host'];
+    if (accessoryHost === host) {
+      return true;
+    }
+    // Cross-identity orphan: the same physical device previously stored under a
+    // different host string (e.g. mDNS hostname vs configured IP). Match by MAC,
+    // but never reclaim an accessory owned by another currently-active device.
+    if (typeof accessoryHost === 'string' && this.devices.has(accessoryHost)) {
+      return false;
+    }
+    const mac = this.deviceInfo.get(host)?.macAddress;
+    if (mac === undefined) {
+      return false;
+    }
+    return accessory.context['deviceMac'] === mac;
   }
 
   private updateAccessoryContext(

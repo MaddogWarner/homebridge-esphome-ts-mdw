@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-06-08
+
+### Fixed
+
+- Stale HomeKit accessories are now reliably removed. Previously cleanup only handled a stateful switch being migrated to a stateless button, and only when its cached UUID matched the current device host — so orphaned tiles could linger after a stateful→stateless migration, an entity rename or exclusion, or a device switching between its mDNS hostname and a configured IP. The plugin now reconciles each device's cached accessories against its live entity list after every successful connection and unregisters any that are no longer advertised. Offline devices are never pruned (reconciliation runs only after a device reports its entities).
+
+### Changed
+
+- Replaced the narrow stateful-switch migration cleanup with the general reconciliation pass. Stale accessories are matched by host, and by device MAC for cross-identity orphans, without ever reclaiming accessories owned by another currently-active device.
+
 ## [1.1.0] - 2026-06-08
 
 ### Added
