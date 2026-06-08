@@ -9,6 +9,7 @@ export interface DeviceConfig {
   encryptionKey?: string;
   password?: string;
   name?: string;
+  statelessSwitches?: string[];
   entities?: Partial<EntityFilter>;
 }
 
@@ -37,4 +38,8 @@ export function entityPassesFilter(objectId: string, filter: EntityFilter): bool
   }
 
   return true;
+}
+
+export function isStatelessSwitch(objectId: string, config: DeviceConfig): boolean {
+  return config.statelessSwitches?.includes(objectId) ?? false;
 }

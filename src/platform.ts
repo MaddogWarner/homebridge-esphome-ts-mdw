@@ -9,7 +9,13 @@ import type {
 } from 'homebridge';
 import { ESPHomeDevice, type DeviceRef } from './device.js';
 import { ESPHomeDiscovery } from './discovery.js';
-import { entityPassesFilter, type DeviceConfig, type EntityFilter, type ESPHomePlatformConfig } from './config.js';
+import {
+  entityPassesFilter,
+  isStatelessSwitch,
+  type DeviceConfig,
+  type EntityFilter,
+  type ESPHomePlatformConfig,
+} from './config.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 import { createAccessory, type ESPHomeEntityInfo } from './accessories/AccessoryFactory.js';
 import type { BaseAccessory } from './accessories/BaseAccessory.js';
@@ -74,14 +80,20 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     }
 
     const entityId = `${entity.type}-${entity.objectId}`;
-    const uuidSeed = entity.type === 'button'
+    const statelessSwitch = entity.type === 'switch' && isStatelessSwitch(entity.objectId, device.config);
+    const programmableEntity = entity.type === 'button' || statelessSwitch;
+    const uuidSeed = programmableEntity
       ? `${device.config.host}-buttons`
       : `${device.config.host}-${entityId}`;
     const uuid = this.api.hap.uuid.generate(uuidSeed);
     const entityDisplayName = entity.name || entity.objectId;
-    const accessoryDisplayName = entity.type === 'button'
+    const accessoryDisplayName = programmableEntity
       ? (device.config.name ?? `${device.config.host} Buttons`)
       : entityDisplayName;
+
+    if (statelessSwitch) {
+      this.unregisterStaleStatefulSwitch(device.config.host, entityId);
+    }
 
     let accessory = this.cachedAccessories.find(a => a.UUID === uuid);
 
@@ -100,7 +112,14 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     const controllerKey = `${uuid}-${entityId}`;
     this.accessoryControllers.get(controllerKey)?.destroy();
 
-    const acc = createAccessory(this, accessory, entity, filter, buttonIndex);
+    const acc = createAccessory(
+      this,
+      accessory,
+      entity,
+      filter,
+      device.config.statelessSwitches ?? [],
+      buttonIndex,
+    );
     if (acc !== null) {
       this.accessoryControllers.set(controllerKey, acc);
       device.registerAccessory(entity.key, acc);
@@ -154,6 +173,21 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
     const device = new ESPHomeDevice(this, config, this.log);
     this.devices.set(config.host, device);
     device.connect();
+  }
+
+  private unregisterStaleStatefulSwitch(host: string, entityId: string): void {
+    const statefulUuid = this.api.hap.uuid.generate(`${host}-${entityId}`);
+    const staleAccessory = this.cachedAccessories.find(a => a.UUID === statefulUuid);
+    if (!staleAccessory) {
+      return;
+    }
+
+    this.log.info(`Removing stale stateful switch accessory: ${staleAccessory.displayName}`);
+    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [staleAccessory]);
+    const staleIndex = this.cachedAccessories.indexOf(staleAccessory);
+    if (staleIndex >= 0) {
+      this.cachedAccessories.splice(staleIndex, 1);
+    }
   }
 
   private updateAccessoryContext(

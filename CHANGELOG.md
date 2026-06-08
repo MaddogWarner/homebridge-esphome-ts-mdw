@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-08
+
+### Added
+
+- Added per-device `statelessSwitches` configuration. Listed ESPHome switch `objectId` values are exposed as HomeKit `StatelessProgrammableSwitch` services and emit a single-press event on ON telemetry.
+- Added Config UI X schema and README documentation for migrating LVGL/template-switch touch panels to stateless HomeKit button tiles.
+
+### Changed
+
+- Configured stateless switches now share the existing programmable-switch accessory grouping with native ESPHome button entities. Unconfigured switches continue to expose as normal HomeKit `Switch` accessories.
+- Migrated stateless switches remove stale cached stateful switch accessories to avoid duplicate Apple Home tiles after changing mode.
+
+### Verified
+
+- Built, linted, and completed an npm package dry-run for the `1.1.0` stateless switch feature.
+
 ## [1.0.4] - 2026-06-07
 
 ### Fixed

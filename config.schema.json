@@ -60,6 +60,12 @@
               "type": "string",
               "description": "Optional display name override for this device."
             },
+            "statelessSwitches": {
+              "title": "Stateless Switches",
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Switch entity objectIds to expose as HomeKit StatelessProgrammableSwitch buttons instead of persistent Switch accessories."
+            },
             "entities": {
               "title": "Entity Filters",
               "type": "object",

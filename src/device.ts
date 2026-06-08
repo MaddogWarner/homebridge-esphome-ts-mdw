@@ -2,7 +2,7 @@ import { EspHomeClient, type DeviceInfo, type EspHomeClientOptions } from 'espho
 import type { Entity } from 'esphome-client';
 import type { Logger } from 'homebridge';
 import type { ESPHomePlatform } from './platform.js';
-import { type DeviceConfig, type EntityFilter, resolveEntityFilter } from './config.js';
+import { isStatelessSwitch, type DeviceConfig, type EntityFilter, resolveEntityFilter } from './config.js';
 import type { BaseAccessory } from './accessories/BaseAccessory.js';
 import { DEFAULT_PORT, DEFAULT_RECONNECT_INTERVAL, MAX_RECONNECT_INTERVAL } from './settings.js';
 
@@ -73,7 +73,7 @@ export class ESPHomeDevice implements DeviceRef {
     this.client.on('entities', (entities: Entity[]) => {
       let buttonIndex = 0;
       for (const entity of entities) {
-        if (entity.type === 'button') {
+        if (entity.type === 'button' || (entity.type === 'switch' && isStatelessSwitch(entity.objectId, this.config))) {
           buttonIndex++;
         }
         this.platform.registerEntityAccessory(this, entity, this.entityFilter, buttonIndex);

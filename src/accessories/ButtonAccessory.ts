@@ -5,6 +5,7 @@ import type { ESPHomePlatform } from '../platform.js';
 export class ButtonAccessory extends BaseAccessory {
   private readonly switchService: Service;
   private readonly buttonIndex: number;
+  private readonly eventSource: 'button' | 'switch';
 
   constructor(
     platform: ESPHomePlatform,
@@ -12,9 +13,11 @@ export class ButtonAccessory extends BaseAccessory {
     buttonIndex: number,
     subtype: string,
     displayName: string,
+    eventSource: 'button' | 'switch' = 'button',
   ) {
     super(platform, accessory);
     this.buttonIndex = buttonIndex;
+    this.eventSource = eventSource;
 
     accessory.category = this.api.hap.Categories.PROGRAMMABLE_SWITCH;
 
@@ -42,7 +45,14 @@ export class ButtonAccessory extends BaseAccessory {
     );
   }
 
-  handleStateUpdate(_data: unknown): void {
+  handleStateUpdate(data: unknown): void {
+    if (this.eventSource === 'switch') {
+      const d = data as { state?: boolean };
+      if (d.state !== true) {
+        return;
+      }
+    }
+
     this.triggerPress(0);
   }
 }

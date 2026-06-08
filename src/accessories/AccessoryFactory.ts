@@ -17,6 +17,7 @@ export function createAccessory(
   accessory: PlatformAccessory,
   entity: ESPHomeEntityInfo,
   filter: EntityFilter,
+  statelessSwitches: readonly string[],
   buttonIndex?: number,
 ): BaseAccessory | null {
   if (!entityPassesFilter(entity.objectId, filter)) {
@@ -37,6 +38,16 @@ export function createAccessory(
       );
 
     case 'switch':
+      if (statelessSwitches.includes(entity.objectId)) {
+        return new ButtonAccessory(
+          platform,
+          accessory,
+          buttonIndex ?? 1,
+          entityId,
+          entity.name,
+          'switch',
+        );
+      }
       return new SwitchAccessory(platform, accessory);
 
     case 'light':

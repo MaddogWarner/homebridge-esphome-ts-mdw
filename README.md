@@ -29,6 +29,8 @@ HomeKit Accessory: "Living Room Panel"
   └── Button 3 → StatelessProgrammableSwitch (scene: Good Night)
 ```
 
+Panels that already publish touch events through ESPHome template `switch` entities can opt into the same HomeKit button model with `statelessSwitches`. Listed switch entities are exposed as HomeKit `StatelessProgrammableSwitch` services and emit a single-press event when the switch reports ON. Unlisted switches keep the normal persistent HomeKit `Switch` behaviour.
+
 ## Contributors
 
 This plugin was designed and built by:
@@ -152,6 +154,10 @@ Add the platform to your Homebridge `config.json`. With `discovery` enabled (the
       "port": 6053,
       "encryptionKey": "YOUR_BASE64_KEY_HERE",
       "name": "Living Room Panel",
+      "statelessSwitches": [
+        "panel_switch_1",
+        "panel_switch_2"
+      ],
       "entities": {
         "include": [],
         "exclude": ["internal_button"]
@@ -182,8 +188,34 @@ Add the platform to your Homebridge `config.json`. With `discovery` enabled (the
 | `port` | integer | No | Native API port. Defaults to `6053` |
 | `encryptionKey` | string | Recommended | Base64-encoded 32-byte PSK from `api.encryption.key` in your ESPHome YAML |
 | `name` | string | No | Override the accessory display name in HomeKit |
+| `statelessSwitches` | string[] | No | Switch entity `objectId` values to expose as HomeKit `StatelessProgrammableSwitch` buttons instead of persistent `Switch` accessories |
 | `entities.include` | string[] | No | Whitelist of entity `objectId` values to expose. If empty, all entities are included |
 | `entities.exclude` | string[] | No | List of entity `objectId` values to hide from HomeKit |
+
+### Stateless Template Switches
+
+For touch panels where ESPHome LVGL buttons drive template switches, list those switch `objectId` values in `statelessSwitches`:
+
+```json
+{
+  "platform": "ESPHomeMDW",
+  "name": "ESPHome",
+  "devices": [
+    {
+      "host": "touch-panel.local",
+      "port": 6053,
+      "encryptionKey": "YOUR_BASE64_KEY_HERE",
+      "name": "Touch Panel",
+      "statelessSwitches": [
+        "panel_switch_1",
+        "panel_switch_2"
+      ]
+    }
+  ]
+}
+```
+
+Each listed switch appears in Apple Home as a stateless programmable button. The plugin emits `SINGLE_PRESS` only when ESPHome reports the switch ON, so a momentary ON then OFF pulse creates one HomeKit button press and does not leave a HomeKit switch state behind.
 
 ### Entity Filtering
 
