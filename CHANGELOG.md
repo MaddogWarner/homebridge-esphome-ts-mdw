@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-12
+
+> Minimum Node.js is now **22.20**. Installs on Node 22.0–22.19 will be refused by npm; upgrade Node before updating the plugin. Nothing else about your configuration or your HomeKit accessories changes.
+
 ### Changed
 
 - Migrated to `esphome-client` 2.0.0. The per-entity `send*Command` wrappers were removed upstream in favour of a single `client.command(id, options)` entry point taking a branded `EntityId`, and `client.on()` now returns a `Disposable` instead of the client. Behaviour is unchanged for users.
@@ -22,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - A test suite covering command minting (including the mixed-case object id case), entity discovery, state routing by entity key, and subscription disposal. Runs on `node --test` against the built output, using `MockClient` from `esphome-client/testing`; no new dependencies. CI now runs it on Node 22 and 24.
+- Repository security baseline, accumulated since 1.1.1 and unreleased until now: Dependabot, CodeQL analysis, dependency review, secret scanning via gitleaks, a stale-issue workflow and CODEOWNERS, plus the dependency and GitHub Actions updates those raised. No runtime impact.
 
 ## [1.1.1] - 2026-06-08
 
