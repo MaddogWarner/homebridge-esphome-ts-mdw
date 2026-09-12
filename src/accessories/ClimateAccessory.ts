@@ -26,12 +26,12 @@ export class ClimateAccessory extends BaseAccessory {
     );
 
     const ref = () => this.platform.getDeviceRef(accessory);
-    const entityId = () => accessory.context['entityId'] as string;
+    const objectId = () => accessory.context['entityObjectId'] as string;
 
     this.service.getCharacteristic(this.Characteristic.Active)
       .onSet(async (value) => {
         if (value === this.Characteristic.Active.INACTIVE) {
-          ref()?.sendClimateCommand(entityId(), { mode: 'off' });
+          ref()?.sendClimateCommand(objectId(), { mode: 'off' });
         }
       });
 
@@ -42,7 +42,7 @@ export class ClimateAccessory extends BaseAccessory {
           [this.Characteristic.TargetHeaterCoolerState.HEAT]: 'heat',
           [this.Characteristic.TargetHeaterCoolerState.COOL]: 'cool',
         };
-        ref()?.sendClimateCommand(entityId(), { mode: modeMap[value as number] ?? 'heat_cool' });
+        ref()?.sendClimateCommand(objectId(), { mode: modeMap[value as number] ?? 'heat_cool' });
       });
   }
 
