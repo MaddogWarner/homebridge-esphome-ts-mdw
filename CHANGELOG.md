@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Migrated to `esphome-client` 2.0.0. The per-entity `send*Command` wrappers were removed upstream in favour of a single `client.command(id, options)` entry point taking a branded `EntityId`, and `client.on()` now returns a `Disposable` instead of the client. Behaviour is unchanged for users.
+- Commands are now addressed by the entity's ESPHome object id rather than the `{type}-{object_id}` composite stored in the accessory context. Upstream's `entityId()` lowercases as it mints, so a device with a mixed-case object id would not have matched the registry had the stored composite been reused.
+- Minimum Node.js is now 22.20, matching `esphome-client` 2.0.0. The declared range was previously `^22`, which permitted versions the new dependency does not support.
+- Auto-reconnect is explicitly disabled on the client (`reconnect: false`). `esphome-client` 2.x reconnects by default, and the plugin already has its own loop driven by the `reconnectInterval` setting; leaving both enabled would have run two schedulers against one connection.
+
+### Fixed
+
+- Event listeners are now disposed when a device reconnects or shuts down. Under the 2.x `Disposable` subscription model each reconnect would otherwise have added a further set of listeners, so a state event would be handled once per reconnect attempt.
+- A device shutdown now closes its connection rather than only dropping the client reference, so the socket is not left open.
+
+### Added
+
+- A test suite covering command minting (including the mixed-case object id case), entity discovery, state routing by entity key, and subscription disposal. Runs on `node --test` against the built output, using `MockClient` from `esphome-client/testing`; no new dependencies. CI now runs it on Node 22 and 24.
+
 ## [1.1.1] - 2026-06-08
 
 ### Fixed

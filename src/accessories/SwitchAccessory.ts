@@ -24,7 +24,7 @@ export class SwitchAccessory extends BaseAccessory {
     this.service.getCharacteristic(this.Characteristic.On)
       .onSet(async (value) => {
         const ref = this.platform.getDeviceRef(accessory);
-        ref?.sendSwitchCommand(accessory.context['entityId'] as string, value as boolean);
+        ref?.sendSwitchCommand(accessory.context['entityObjectId'] as string, value as boolean);
       });
   }
 

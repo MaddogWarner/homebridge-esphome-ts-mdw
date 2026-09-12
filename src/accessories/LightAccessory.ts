@@ -29,34 +29,34 @@ export class LightAccessory extends BaseAccessory {
     );
 
     const ref = () => this.platform.getDeviceRef(accessory);
-    const entityId = () => accessory.context['entityId'] as string;
+    const objectId = () => accessory.context['entityObjectId'] as string;
 
     this.service.getCharacteristic(this.Characteristic.On)
       .onSet(async (value) => {
-        ref()?.sendLightCommand(entityId(), { state: value as boolean });
+        ref()?.sendLightCommand(objectId(), { state: value as boolean });
       });
 
     this.service.getCharacteristic(this.Characteristic.Brightness)
       .onSet(async (value) => {
-        ref()?.sendLightCommand(entityId(), { brightness: (value as number) / 100 });
+        ref()?.sendLightCommand(objectId(), { brightness: (value as number) / 100 });
       });
 
     this.service.getCharacteristic(this.Characteristic.Hue)
       .onSet(async (value) => {
         const sat = (this.service.getCharacteristic(this.Characteristic.Saturation).value as number | null) ?? 100;
-        ref()?.sendLightCommand(entityId(), { colorMode: ColorMode.RGB, rgb: hueSaturationToRgb(value as number, sat) });
+        ref()?.sendLightCommand(objectId(), { colorMode: ColorMode.RGB, rgb: hueSaturationToRgb(value as number, sat) });
       });
 
     this.service.getCharacteristic(this.Characteristic.Saturation)
       .onSet(async (value) => {
         const hue = (this.service.getCharacteristic(this.Characteristic.Hue).value as number | null) ?? 0;
         const sat = value as number;
-        ref()?.sendLightCommand(entityId(), { colorMode: ColorMode.RGB, rgb: hueSaturationToRgb(hue, sat) });
+        ref()?.sendLightCommand(objectId(), { colorMode: ColorMode.RGB, rgb: hueSaturationToRgb(hue, sat) });
       });
 
     this.service.getCharacteristic(this.Characteristic.ColorTemperature)
       .onSet(async (value) => {
-        ref()?.sendLightCommand(entityId(), {
+        ref()?.sendLightCommand(objectId(), {
           colorMode: ColorMode.COLOR_TEMPERATURE,
           colorTemperature: value as number,
         });
