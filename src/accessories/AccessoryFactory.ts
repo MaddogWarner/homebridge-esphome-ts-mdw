@@ -5,10 +5,10 @@ import { SwitchAccessory } from './SwitchAccessory.js';
 import { LightAccessory } from './LightAccessory.js';
 import { SensorAccessory } from './SensorAccessory.js';
 import { BinarySensorAccessory, type BinarySensorClass } from './BinarySensorAccessory.js';
-import { ClimateAccessory } from './ClimateAccessory.js';
+import { ClimateAccessory, type ClimateEntityTraits } from './ClimateAccessory.js';
 import type { BaseAccessory } from './BaseAccessory.js';
 import type { ESPHomePlatform } from '../platform.js';
-import { entityPassesFilter, type EntityFilter } from '../config.js';
+import { entityPassesFilter, type ClimateEntityConfig, type EntityFilter } from '../config.js';
 
 export type ESPHomeEntityInfo = Entity;
 
@@ -19,6 +19,7 @@ export function createAccessory(
   filter: EntityFilter,
   statelessSwitches: readonly string[],
   buttonIndex?: number,
+  climateConfig?: ClimateEntityConfig,
 ): BaseAccessory | null {
   if (!entityPassesFilter(entity.objectId, filter)) {
     platform.log.debug(`Entity ${entity.type}-${entity.objectId} filtered out.`);
@@ -68,7 +69,7 @@ export function createAccessory(
     }
 
     case 'climate':
-      return new ClimateAccessory(platform, accessory);
+      return new ClimateAccessory(platform, accessory, entity as ClimateEntityTraits, climateConfig);
 
     default:
       platform.log.debug(`Unsupported entity type "${entity.type}" for ${entityId}; skipping.`);
