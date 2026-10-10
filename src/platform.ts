@@ -12,6 +12,7 @@ import { ESPHomeDiscovery } from './discovery.js';
 import {
   entityPassesFilter,
   isStatelessSwitch,
+  resolveClimateConfig,
   type DeviceConfig,
   type EntityFilter,
   type ESPHomePlatformConfig,
@@ -115,6 +116,7 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
       filter,
       device.config.statelessSwitches ?? [],
       buttonIndex,
+      entity.type === 'climate' ? resolveClimateConfig(device.config, entity.objectId) : undefined,
     );
     if (acc !== null) {
       this.accessoryControllers.set(controllerKey, acc);
