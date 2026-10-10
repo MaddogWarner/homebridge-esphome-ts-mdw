@@ -84,6 +84,61 @@
                   "description": "Blacklist of entity objectIds to hide."
                 }
               }
+            },
+            "climate": {
+              "title": "Climate Entities",
+              "type": "array",
+              "description": "Optional per climate entity settings. Entities not listed keep the default HeaterCooler.",
+              "items": {
+                "title": "Climate Entity",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "objectId": {
+                    "title": "Entity objectId",
+                    "type": "string",
+                    "required": true,
+                    "placeholder": "bedroom_ac",
+                    "description": "objectId of the ESPHome climate entity."
+                  },
+                  "thermostat": {
+                    "title": "Show as Thermostat",
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Single target temperature (Off/Heat/Cool/Auto) instead of HeaterCooler."
+                  },
+                  "fan": {
+                    "title": "Add Fan (speed and swing)",
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Linked Fanv2: 0% = auto, 1-33% = low, 34-66% = medium, 67-100% = high; swing off/vertical."
+                  },
+                  "presets": {
+                    "title": "Presets",
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "home",
+                        "away",
+                        "boost",
+                        "comfort",
+                        "eco",
+                        "sleep",
+                        "activity"
+                      ]
+                    },
+                    "uniqueItems": true,
+                    "description": "Presets supported by the unit, shown as mutually exclusive switches."
+                  },
+                  "customPresets": {
+                    "title": "Custom Presets",
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Custom preset names exactly as in the ESPHome YAML (e.g. Freeze Protection)."
+                  }
+                }
+              }
             }
           }
         }
