@@ -127,8 +127,8 @@ export class ESPHomeDevice implements DeviceRef {
             + `${error instanceof Error ? error.message : String(error)}`);
         }
       }
-      // An incomplete pass cannot prove a cached accessory is stale. Still
-      // reconcile, but preserve cached accessories until a complete pass.
+      // An incomplete pass cannot prove a cached accessory is stale, so pruning
+      // is skipped until a complete pass.
       this.platform.reconcileDeviceAccessories(this.config.host, claimedUuids, !registrationFailed && !truncated);
     }));
 
