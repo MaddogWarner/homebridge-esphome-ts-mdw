@@ -53,6 +53,7 @@ export class ClimateAccessory extends BaseAccessory {
   private currentMode = 'off';
   private activePreset: string | null = null;
   private restoreTimer: ReturnType<typeof setTimeout> | null = null;
+  private fanSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     platform: ESPHomePlatform,
@@ -108,6 +109,10 @@ export class ClimateAccessory extends BaseAccessory {
     if (this.restoreTimer) {
       clearTimeout(this.restoreTimer);
       this.restoreTimer = null;
+    }
+    if (this.fanSyncTimer) {
+      clearTimeout(this.fanSyncTimer);
+      this.fanSyncTimer = null;
     }
   }
 
@@ -237,10 +242,16 @@ export class ClimateAccessory extends BaseAccessory {
         if (value === C.Active.ACTIVE) {
           this.scheduleRestore();
         } else {
-          setTimeout(() => fan.updateCharacteristic(
-            C.Active,
-            this.currentMode === 'off' ? C.Active.INACTIVE : C.Active.ACTIVE,
-          ), 500);
+          if (this.fanSyncTimer) {
+            clearTimeout(this.fanSyncTimer);
+          }
+          this.fanSyncTimer = setTimeout(() => {
+            this.fanSyncTimer = null;
+            fan.updateCharacteristic(
+              C.Active,
+              this.currentMode === 'off' ? C.Active.INACTIVE : C.Active.ACTIVE,
+            );
+          }, 500);
         }
       });
 
