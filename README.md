@@ -241,12 +241,12 @@ By default a climate entity is a HeaterCooler with power, mode (Auto/Heat/Cool),
 | Option | Type | Description |
 | --- | --- | --- |
 | `objectId` | string | The climate entity's `objectId` |
-| `thermostat` | boolean | Expose the entity as a Thermostat (one target temperature; Off/Heat/Cool/Auto) instead of a HeaterCooler. Useful for units with a single setpoint, where HeaterCooler shows two sliders in Auto. Off by default |
+| `thermostat` | boolean | Expose the entity as a Thermostat (one target temperature; Off/Heat/Cool/Auto) instead of a HeaterCooler. Useful for units with a single setpoint, where HeaterCooler shows two sliders in Auto. Off by default. Entities with two-point target temperatures keep HeaterCooler and log a warning, even when this option is enabled |
 | `fan` | boolean | Add a linked Fanv2 for fan speed and swing. `RotationSpeed` maps to `fan_mode`: 0 % = auto, 1–33 % = low, 34–66 % = medium, 67–100 % = high. `SwingMode` maps to `swing_mode` off / vertical. Sliding to 0 % selects auto and never turns the unit off |
 | `presets` | string[] | Standard ESPHome presets to show as switches: `home`, `away`, `boost`, `comfort`, `eco`, `sleep`, `activity` |
 | `customPresets` | string[] | Custom preset names to show as switches, exactly as defined in the ESPHome YAML |
 
-Preset switches are mutually exclusive: turning one on turns the others off, turning the active one off sets the preset back to `none`, and they follow preset changes made on the unit or its remote. Picking a preset while the unit is off powers it on in its last mode. List only presets your unit supports — the plugin cannot read the supported list from the device.
+Preset switches are mutually exclusive: turning one on turns the others off, turning the active one off sets the preset back to `none`, and they follow preset changes made on the unit or its remote. Picking a preset while the unit is off powers it on in its last mode. List only presets your unit supports. Although `esphome-client` 2.0.0 exposes supported preset and fan-mode lists, this plugin uses explicit configuration to control which services appear in HomeKit.
 
 Turning the climate accessory on restores the last mode it ran in (Auto if it has never run). Changing the target temperature in HomeKit sends it to the device in every mode.
 

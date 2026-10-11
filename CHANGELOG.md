@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Climate: changing the target temperature in HomeKit now sends it to the device. Previously the setpoint was only displayed.
 - Climate: turning the accessory on now restores the last non-off mode. Previously only turning it off sent a command.
 - Climate: the HeaterCooler threshold range now follows the entity's visual min/max temperature, so setpoints above 25 °C are no longer clamped on the heating threshold.
+- Climate: preset switches and swing state reset correctly when ESPHome omits protobuf default values from state updates.
+- Climate: entities with two-point target temperatures retain HeaterCooler, with a warning if Thermostat was requested, so commands and displayed targets use the correct low/high fields.
 
 ## [1.2.0] - 2026-09-12
 

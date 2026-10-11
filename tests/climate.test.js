@@ -9,11 +9,28 @@ import assert from 'node:assert/strict';
 import { describe, it, beforeEach, afterEach } from 'node:test';
 
 import { Accessory, Characteristic, Service, uuid } from '@homebridge/hap-nodejs';
+import { ENTITY_SCHEMAS } from 'esphome-client';
 import {
   ClimateAccessory,
   fanModeToRotationSpeed,
   rotationSpeedToFanMode,
 } from '../dist/accessories/ClimateAccessory.js';
+
+// Use the installed client's real wire decoder: MockClient state factories
+// supply values explicitly and cannot reproduce omitted protobuf defaults.
+const clientModule = import.meta.resolve('esphome-client');
+const { decodeProtobuf } = await import(new URL('./protocol/codec.js', clientModule));
+const { decodeStateFromSchema } = await import(new URL('./telemetry.js', clientModule));
+
+function decodeClimateState(bytes) {
+  return decodeStateFromSchema({
+    entityType: 'climate',
+    fields: decodeProtobuf(Buffer.from(bytes), { maxFieldsPerMessage: 64 }),
+    key: 1,
+    name: 'Bedroom AC',
+    stateSchema: ENTITY_SCHEMAS.climate.state,
+  });
+}
 
 const silentLog = { info() {}, warn() {}, error() {}, debug() {}, log() {} };
 
@@ -118,6 +135,37 @@ describe('HeaterCooler (default)', () => {
 });
 
 describe('Thermostat option', () => {
+  for (const trait of ['supportsTwoPointTargetTemperature', 'requiresTwoPointTargetTemperature']) {
+    it(`keeps HeaterCooler for ${trait}, including a cached Thermostat`, async () => {
+      const commands = [];
+      const warnings = [];
+      const accessory = makeAccessory();
+      const platform = makePlatform(commands);
+      platform.log = { ...silentLog, warn: (message) => warnings.push(message) };
+      new ClimateAccessory(platform, accessory, {}, { thermostat: true }).destroy();
+
+      const climate = new ClimateAccessory(platform, accessory, { [trait]: true }, { thermostat: true });
+      try {
+        const service = accessory.getService(Service.HeaterCooler);
+        assert.ok(service);
+        assert.equal(accessory.getService(Service.Thermostat), undefined);
+        assert.equal(warnings.length, 1);
+        assert.match(warnings[0], /bedroom_ac.*two-point.*keeping HeaterCooler/);
+        climate.handleStateUpdate({ mode: 'heat_cool', targetTemperatureLow: 18, targetTemperatureHigh: 25 });
+        assert.equal(service.getCharacteristic(Characteristic.HeatingThresholdTemperature).value, 18);
+        assert.equal(service.getCharacteristic(Characteristic.CoolingThresholdTemperature).value, 25);
+        await set(service, Characteristic.HeatingThresholdTemperature, 19);
+        await set(service, Characteristic.CoolingThresholdTemperature, 24);
+        assert.deepEqual(commands, [
+          { objectId: 'bedroom_ac', targetTemperatureLow: 19 },
+          { objectId: 'bedroom_ac', targetTemperatureHigh: 24 },
+        ]);
+      } finally {
+        climate.destroy();
+      }
+    });
+  }
+
   it('replaces the HeaterCooler with a Thermostat and drives one setpoint', async () => {
     const commands = [];
     const accessory = makeAccessory();
@@ -192,6 +240,17 @@ describe('linked fan', () => {
     assert.equal(fan.getCharacteristic(Characteristic.Active).value, Characteristic.Active.ACTIVE);
   });
 
+  it('clears swing when the wire snapshot omits the zero-valued OFF enum', () => {
+    // Protobuf fields: mode (2) = COOL (2), swing_mode (10) = VERTICAL (2).
+    climate.handleStateUpdate(decodeClimateState([0x10, 0x02, 0x50, 0x02]));
+    assert.equal(fan.getCharacteristic(Characteristic.SwingMode).value, Characteristic.SwingMode.SWING_ENABLED);
+    const stopped = decodeClimateState([0x10, 0x02]);
+    assert.equal(stopped.swingMode, undefined);
+    climate.handleStateUpdate(stopped);
+    assert.equal(fan.getCharacteristic(Characteristic.SwingMode).value, Characteristic.SwingMode.SWING_DISABLED);
+    assert.deepEqual(commands, []);
+  });
+
   it('is removed again when the option is turned off', () => {
     new ClimateAccessory(makePlatform(commands), accessory, {}, {}).destroy();
     assert.equal(accessory.getServiceById(Service.Fanv2, 'fan'), undefined);
@@ -255,6 +314,39 @@ describe('preset switches', () => {
     assert.equal(on('custom:Freeze Protection'), true);
     climate.handleStateUpdate({ mode: 'cool', preset: 'none', customPreset: '' });
     assert.equal(on('custom:Freeze Protection'), false);
+  });
+
+  it('clears a standard preset when the wire snapshot omits NONE', async () => {
+    // Protobuf fields: mode (2) = COOL (2), preset (12) = ECO (5).
+    climate.handleStateUpdate(decodeClimateState([0x10, 0x02, 0x60, 0x05]));
+    assert.equal(on('eco'), true);
+    const cleared = decodeClimateState([0x10, 0x02]);
+    assert.equal(cleared.preset, undefined);
+    climate.handleStateUpdate(cleared);
+    assert.equal(on('eco'), false);
+    assert.equal(await sw('eco').getCharacteristic(Characteristic.On).handleGetRequest(), false);
+    assert.deepEqual(commands, []);
+  });
+
+  it('clears a custom preset when NONE and the empty custom name are omitted', () => {
+    const customName = Buffer.from('Freeze Protection');
+    // custom_preset is protobuf string field 13 (tag 0x6a).
+    climate.handleStateUpdate(decodeClimateState([0x10, 0x02, 0x6a, customName.length, ...customName]));
+    assert.equal(on('custom:Freeze Protection'), true);
+    const cleared = decodeClimateState([0x10, 0x02]);
+    assert.equal(cleared.customPreset, undefined);
+    climate.handleStateUpdate(cleared);
+    assert.equal(on('custom:Freeze Protection'), false);
+    assert.deepEqual(commands, []);
+  });
+
+  it('switches from a custom preset to a standard preset when the custom name is omitted', () => {
+    const customName = Buffer.from('Freeze Protection');
+    climate.handleStateUpdate(decodeClimateState([0x10, 0x02, 0x6a, customName.length, ...customName]));
+    climate.handleStateUpdate(decodeClimateState([0x10, 0x02, 0x60, 0x05]));
+    assert.equal(on('custom:Freeze Protection'), false);
+    assert.equal(on('eco'), true);
+    assert.deepEqual(commands, []);
   });
 
   it('removes switches for presets that are no longer configured', () => {

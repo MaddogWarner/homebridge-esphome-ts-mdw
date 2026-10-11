@@ -25,6 +25,7 @@ export interface ClimateEntityTraits {
   visualMaxTemperature?: number;
   visualTargetTemperatureStep?: number;
   supportsTwoPointTargetTemperature?: boolean;
+  requiresTwoPointTargetTemperature?: boolean;
 }
 
 type ClimateCommandMode = 'off' | 'heat_cool' | 'cool' | 'heat' | 'fan_only' | 'dry' | 'auto';
@@ -61,8 +62,13 @@ export class ClimateAccessory extends BaseAccessory {
   ) {
     super(platform, accessory);
 
-    this.thermostat = options.thermostat === true;
-    this.twoPoint = !this.thermostat && traits.supportsTwoPointTargetTemperature === true;
+    this.twoPoint = traits.supportsTwoPointTargetTemperature === true
+      || traits.requiresTwoPointTargetTemperature === true;
+    this.thermostat = options.thermostat === true && !this.twoPoint;
+    if (options.thermostat === true && this.twoPoint) {
+      this.log.warn(`Climate entity ${accessory.context['entityObjectId'] as string} uses two-point target temperatures; ` +
+        'keeping HeaterCooler. Disable thermostat for this entity in the climate configuration.');
+    }
 
     // Only one of the two primary services may exist; drop the other one when
     // the option is toggled so Home does not keep a stale tile around.
@@ -350,7 +356,9 @@ export class ClimateAccessory extends BaseAccessory {
       if (speed !== undefined) {
         this.fan.updateCharacteristic(C.RotationSpeed, speed);
       }
-      const swing = normaliseEnum(d.swingMode, ClimateSwingMode);
+      // Climate state messages are snapshots. Protobuf omits zero-valued
+      // enums, which esphome-client decodes as absent fields.
+      const swing = normaliseEnum(d.swingMode ?? ClimateSwingMode.OFF, ClimateSwingMode);
       if (swing !== undefined) {
         this.fan.updateCharacteristic(
           C.SwingMode,
@@ -361,7 +369,7 @@ export class ClimateAccessory extends BaseAccessory {
 
     if (this.presetSwitches.length > 0) {
       const customPreset = typeof d.customPreset === 'string' ? d.customPreset : '';
-      const preset = normaliseEnum(d.preset, ClimatePreset);
+      const preset = normaliseEnum(d.preset ?? ClimatePreset.NONE, ClimatePreset);
       if (customPreset !== '') {
         this.activePreset = CUSTOM_PREFIX + customPreset;
       } else if (preset !== undefined) {

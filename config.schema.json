@@ -105,7 +105,7 @@
                     "title": "Show as Thermostat",
                     "type": "boolean",
                     "default": false,
-                    "description": "Single target temperature (Off/Heat/Cool/Auto) instead of HeaterCooler."
+                    "description": "Single target temperature (Off/Heat/Cool/Auto) instead of HeaterCooler. Two-point entities keep HeaterCooler and log a warning."
                   },
                   "fan": {
                     "title": "Add Fan (speed and swing)",
