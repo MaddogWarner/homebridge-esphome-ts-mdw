@@ -233,6 +233,14 @@ describe('linked fan', () => {
     assert.deepEqual(commands, []);
   });
 
+  it('cancels the pending fan re-sync on destroy', async () => {
+    climate.handleStateUpdate({ mode: 'cool' });
+    await set(fan, Characteristic.Active, Characteristic.Active.INACTIVE);
+    climate.destroy();
+    await wait(600);
+    assert.equal(fan.getCharacteristic(Characteristic.Active).value, Characteristic.Active.INACTIVE);
+  });
+
   it('follows fan and swing state from the device', () => {
     climate.handleStateUpdate({ mode: 'cool', fanMode: 'high', swingMode: 'vertical' });
     assert.equal(fan.getCharacteristic(Characteristic.RotationSpeed).value, 100);
