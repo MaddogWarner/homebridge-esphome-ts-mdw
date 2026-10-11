@@ -4,7 +4,7 @@ import type { Logger } from 'homebridge';
 import type { ESPHomePlatform } from './platform.js';
 import { isStatelessSwitch, type DeviceConfig, type EntityFilter, resolveEntityFilter } from './config.js';
 import type { BaseAccessory } from './accessories/BaseAccessory.js';
-import { DEFAULT_PORT, DEFAULT_RECONNECT_INTERVAL, MAX_RECONNECT_INTERVAL } from './settings.js';
+import { DEFAULT_PORT, DEFAULT_RECONNECT_INTERVAL, MAX_RECONNECT_INTERVAL, MAX_ENTITIES_PER_DEVICE } from './settings.js';
 
 // esphome-client 2.x derives every command shape from ENTITY_SCHEMAS rather than
 // exposing per-entity `send*Command` wrappers, so the option types come from the
@@ -101,26 +101,45 @@ export class ESPHomeDevice implements DeviceRef {
       this.platform.updateDeviceContext(this.config.host, info);
     }));
 
+    let capWarningLogged = false;
     this.subscriptions.push(this.client.on('entities', (entities: Entity[]) => {
       const claimedUuids = new Set<string>();
+      let registrationFailed = false;
+      const truncated = entities.length > MAX_ENTITIES_PER_DEVICE;
+      if (truncated && !capWarningLogged) {
+        capWarningLogged = true;
+        this.log.warn(`Device ${this.config.host}: skipping ${entities.length - MAX_ENTITIES_PER_DEVICE} entities `
+          + `above the per-device limit of ${MAX_ENTITIES_PER_DEVICE}`);
+      }
       let buttonIndex = 0;
-      for (const entity of entities) {
+      for (const entity of entities.slice(0, MAX_ENTITIES_PER_DEVICE)) {
         if (entity.type === 'button' || (entity.type === 'switch' && isStatelessSwitch(entity.objectId, this.config))) {
           buttonIndex++;
         }
-        const uuid = this.platform.registerEntityAccessory(this, entity, this.entityFilter, buttonIndex);
-        if (uuid !== undefined) {
-          claimedUuids.add(uuid);
+        try {
+          const uuid = this.platform.registerEntityAccessory(this, entity, this.entityFilter, buttonIndex);
+          if (uuid !== undefined) {
+            claimedUuids.add(uuid);
+          }
+        } catch (error) {
+          registrationFailed = true;
+          this.log.warn(`Device ${this.config.host}: could not register ${entity.type}-${entity.objectId}: `
+            + `${error instanceof Error ? error.message : String(error)}`);
         }
       }
-      // Prune any cached accessories this device no longer advertises (migrated,
-      // renamed, excluded, or left over from a previous host identity).
-      this.platform.reconcileDeviceAccessories(this.config.host, claimedUuids);
+      // An incomplete pass cannot prove a cached accessory is stale, so pruning
+      // is skipped until a complete pass.
+      this.platform.reconcileDeviceAccessories(this.config.host, claimedUuids, !registrationFailed && !truncated);
     }));
 
     for (const eventType of ['sensor', 'binary_sensor', 'switch', 'light', 'climate', 'button'] as const) {
       this.subscriptions.push(this.client.on(eventType, (data) => {
-        this.accessories.get(data.key)?.handleStateUpdate(data);
+        try {
+          this.accessories.get(data.key)?.handleStateUpdate(data);
+        } catch (error) {
+          this.log.warn(`Device ${this.config.host}: could not update ${eventType} key ${data.key}: `
+            + `${error instanceof Error ? error.message : String(error)}`);
+        }
       }));
     }
 
@@ -131,7 +150,12 @@ export class ESPHomeDevice implements DeviceRef {
       }
     }));
 
-    this.client.connect();
+    Promise.resolve(this.client.connect()).catch((error: unknown) => {
+      this.log.warn(`Could not connect to ${this.config.host}: ${error instanceof Error ? error.message : String(error)}`);
+      if (!this.destroyed) {
+        this.scheduleReconnect();
+      }
+    });
   }
 
   registerAccessory(entityKey: number, acc: BaseAccessory): void {

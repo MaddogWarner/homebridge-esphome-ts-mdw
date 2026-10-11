@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-11
+
+### Security
+
+- Entity registration and connection errors are now contained per device instead of stopping Homebridge (GHSA-vcwm-gcx4-752j).
+
+### Fixed
+
+- Preserve cached accessories when an entity registration pass is incomplete, and retry failed connections using the existing reconnect timer.
+
 ## [1.3.0] - 2026-10-11
 
 ### Added
