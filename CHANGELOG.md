@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Climate: optional per-entity settings under `devices[].climate` (#38). Existing setups are unchanged unless an entity is listed.
+  - `thermostat`: expose the entity as a Thermostat (single target temperature, Off/Heat/Cool/Auto) instead of a HeaterCooler.
+  - `fan`: linked Fanv2 for fan speed (`fan_mode`: 0 % = auto, 1–33 % low, 34–66 % medium, 67–100 % high) and swing (`swing_mode` off / vertical).
+  - `presets` / `customPresets`: mutually exclusive preset switches that follow the device state.
+- Tests for the climate accessory.
+
+### Fixed
+
+- Climate: changing the target temperature in HomeKit now sends it to the device. Previously the setpoint was only displayed.
+- Climate: turning the accessory on now restores the last non-off mode. Previously only turning it off sent a command.
+- Climate: the HeaterCooler threshold range now follows the entity's visual min/max temperature, so setpoints above 25 °C are no longer clamped on the heating threshold.
+- Climate: preset switches and swing state reset correctly when ESPHome omits protobuf default values from state updates.
+- Climate: entities with two-point target temperatures retain HeaterCooler, with a warning if Thermostat was requested, so commands and displayed targets use the correct low/high fields.
+
 ## [1.2.0] - 2026-09-12
 
 > Minimum Node.js is now **22.20**. Installs on Node 22.0–22.19 will be refused by npm; upgrade Node before updating the plugin. Nothing else about your configuration or your HomeKit accessories changes.

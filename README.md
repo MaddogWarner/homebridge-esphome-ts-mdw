@@ -16,7 +16,7 @@ This plugin connects ESPHome devices running the native API to Apple HomeKit via
 | `binary_sensor` (motion) | MotionSensor |
 | `binary_sensor` (door/window) | ContactSensor |
 | `binary_sensor` (smoke) | SmokeSensor |
-| `climate` | HeaterCooler |
+| `climate` | HeaterCooler (or Thermostat), optional linked Fanv2 and preset switches — see [Climate Entities](#climate-entities) |
 
 ### Primary Use Case: ESP32 Touch Panels
 
@@ -191,6 +191,7 @@ Add the platform to your Homebridge `config.json`. With `discovery` enabled (the
 | `statelessSwitches` | string[] | No | Switch entity `objectId` values to expose as HomeKit `StatelessProgrammableSwitch` buttons instead of persistent `Switch` accessories |
 | `entities.include` | string[] | No | Whitelist of entity `objectId` values to expose. If empty, all entities are included |
 | `entities.exclude` | string[] | No | List of entity `objectId` values to hide from HomeKit |
+| `climate` | array | No | Per climate entity options (Thermostat, fan, presets). See [Climate Entities](#climate-entities) |
 
 ### Stateless Template Switches
 
@@ -216,6 +217,40 @@ For touch panels where ESPHome LVGL buttons drive template switches, list those 
 ```
 
 Each listed switch appears in Apple Home as a stateless programmable button. The plugin emits `SINGLE_PRESS` only when ESPHome reports the switch ON, so a momentary ON then OFF pulse creates one HomeKit button press and does not leave a HomeKit switch state behind.
+
+### Climate Entities
+
+By default a climate entity is a HeaterCooler with power, mode (Auto/Heat/Cool), current temperature and target temperature. Extra HomeKit services are opt-in per entity through the device's `climate` list, keyed by the entity `objectId`:
+
+```json
+{
+  "host": "bedroom-ac.local",
+  "encryptionKey": "YOUR_BASE64_KEY_HERE",
+  "climate": [
+    {
+      "objectId": "bedroom_ac",
+      "thermostat": true,
+      "fan": true,
+      "presets": ["boost", "eco", "sleep"],
+      "customPresets": ["Freeze Protection"]
+    }
+  ]
+}
+```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `objectId` | string | The climate entity's `objectId` |
+| `thermostat` | boolean | Expose the entity as a Thermostat (one target temperature; Off/Heat/Cool/Auto) instead of a HeaterCooler. Useful for units with a single setpoint, where HeaterCooler shows two sliders in Auto. Off by default. Entities with two-point target temperatures keep HeaterCooler and log a warning, even when this option is enabled |
+| `fan` | boolean | Add a linked Fanv2 for fan speed and swing. `RotationSpeed` maps to `fan_mode`: 0 % = auto, 1–33 % = low, 34–66 % = medium, 67–100 % = high. `SwingMode` maps to `swing_mode` off / vertical. Sliding to 0 % selects auto and never turns the unit off |
+| `presets` | string[] | Standard ESPHome presets to show as switches: `home`, `away`, `boost`, `comfort`, `eco`, `sleep`, `activity` |
+| `customPresets` | string[] | Custom preset names to show as switches, exactly as defined in the ESPHome YAML |
+
+Preset switches are mutually exclusive: turning one on turns the others off, turning the active one off sets the preset back to `none`, and they follow preset changes made on the unit or its remote. Picking a preset while the unit is off powers it on in its last mode. List only presets your unit supports. Although `esphome-client` 2.0.0 exposes supported preset and fan-mode lists, this plugin uses explicit configuration to control which services appear in HomeKit.
+
+Turning the climate accessory on restores the last mode it ran in (Auto if it has never run). Changing the target temperature in HomeKit sends it to the device in every mode.
+
+The same options can also be written as an object keyed by `objectId` (`"climate": { "bedroom_ac": { "fan": true } }`).
 
 ### Entity Filtering
 
