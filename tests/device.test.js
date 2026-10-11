@@ -197,3 +197,188 @@ describe('subscription lifecycle', () => {
     assert.equal(destroyed, true);
   });
 });
+
+// Additional coverage for per-device lifecycle handling.
+import { MAX_ENTITIES_PER_DEVICE } from '../dist/settings.js';
+import { ESPHomePlatform } from '../dist/platform.js';
+const { HomebridgeAPI } = await import(new URL('./api.js', import.meta.resolve('homebridge')));
+
+function makeLoggedDevice() {
+  const warnings = [];
+  const infos = [];
+  const log = { ...silentLog, warn: message => warnings.push(message), info: message => infos.push(message) };
+  const platform = makePlatform();
+  const client = makeClient();
+  const device = new ESPHomeDevice(platform, { host: '10.0.0.5' }, log, () => client);
+  return { device, client, platform, warnings, infos };
+}
+
+const relayEntities = count => Array.from({ length: count }, (_, i) => ({
+  key: i + 1, type: 'switch', objectId: `relay_${i}`, name: `Relay ${i}`,
+}));
+
+const settle = () => new Promise(resolve => setImmediate(resolve));
+
+describe('per-device lifecycle', () => {
+  it('keeps running when an entity fails to register', () => {
+    const { device, client, platform, warnings } = makeLoggedDevice();
+    const reconcile = platform.reconcileDeviceAccessories.bind(platform);
+    let prune;
+    platform.reconcileDeviceAccessories = (host, claimed, enabled) => {
+      prune = enabled;
+      reconcile(host, claimed);
+    };
+    const register = platform.registerEntityAccessory.bind(platform);
+    platform.registerEntityAccessory = (dev, entity) => {
+      if (entity.key === 2) {
+        throw new Error('registration unavailable');
+      }
+      return register(dev, entity);
+    };
+    device.connect();
+    assert.doesNotThrow(() => client.emit('entities', relayEntities(3)));
+    assert.deepEqual(platform.registered.map(e => e.key), [1, 3]);
+    assert.deepEqual(platform.reconciled[0].claimedUuids, ['uuid-relay_0', 'uuid-relay_2']);
+    assert.equal(prune, false);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /10\.0\.0\.5.*switch-relay_1.*registration unavailable/);
+    device.destroy();
+  });
+
+  it('preserves cached accessories until a complete registration pass', () => {
+    const api = new HomebridgeAPI();
+    const removed = [];
+    api.unregisterPlatformAccessories = (_plugin, _platform, accessories) => removed.push(...accessories);
+    const platform = new ESPHomePlatform(silentLog, { platform: 'ESPHomeMDW' }, api);
+    const cached = new api.platformAccessory('Relay', api.hap.uuid.generate('10.0.0.5-switch-relay_0'));
+    cached.context.host = '10.0.0.5';
+    platform.configureAccessory(cached);
+    const client = makeClient();
+    const device = new ESPHomeDevice(platform, { host: '10.0.0.5' }, silentLog, () => client);
+    api.updatePlatformAccessories = () => { throw new Error('registration unavailable'); };
+    device.connect();
+    client.emit('entities', relayEntities(1));
+    assert.equal(removed.length, 0);
+    // A later complete pass can prune an accessory genuinely no longer listed.
+    client.emit('entities', []);
+    assert.deepEqual(removed, [cached]);
+    device.destroy();
+  });
+
+  it('bounds each entity pass and preserves cached accessories on a partial pass', () => {
+    const { device, client, platform, warnings } = makeLoggedDevice();
+    const pruneFlags = [];
+    platform.reconcileDeviceAccessories = (_host, _claimed, prune) => pruneFlags.push(prune);
+    device.connect();
+    for (let pass = 0; pass < 2; pass++) {
+      client.emit('entities', relayEntities(MAX_ENTITIES_PER_DEVICE + 10));
+      assert.equal(platform.registered.length, MAX_ENTITIES_PER_DEVICE * (pass + 1));
+      assert.equal(warnings.length, 1);
+      assert.match(warnings[0], /skipping 10 entities.*256/);
+    }
+    client.emit('entities', relayEntities(2));
+    assert.equal(platform.registered.length, MAX_ENTITIES_PER_DEVICE * 2 + 2);
+    assert.equal(warnings.length, 1);
+    assert.deepEqual(pruneFlags, [false, false, true]);
+    device.connect();
+    client.emit('entities', relayEntities(MAX_ENTITIES_PER_DEVICE + 10));
+    assert.equal(warnings.length, 2);
+    device.destroy();
+  });
+
+  for (const type of ['sensor', 'binary_sensor', 'switch', 'light', 'climate', 'button']) {
+    it(`logs a failed ${type} update and handles the next update`, () => {
+      const { device, client, warnings } = makeLoggedDevice();
+      let updates = 0;
+      device.registerAccessory(1, { handleStateUpdate() { throw new Error('update unavailable'); }, destroy() {} });
+      device.registerAccessory(2, { handleStateUpdate() { updates++; }, destroy() {} });
+      device.connect();
+      assert.doesNotThrow(() => client.emit(type, { key: 1 }));
+      client.emit(type, { key: 2 });
+      assert.equal(updates, 1);
+      assert.equal(warnings.length, 1);
+      assert.match(warnings[0], new RegExp(`10\\.0\\.0\\.5.*${type} key 1.*update unavailable`));
+      device.destroy();
+    });
+  }
+
+  it('handles a rejected connection and retries once', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { device, client, warnings, infos } = makeLoggedDevice();
+    const unhandled = [];
+    const onUnhandled = error => unhandled.push(error);
+    process.on('unhandledRejection', onUnhandled);
+    t.after(() => { device.destroy(); process.off('unhandledRejection', onUnhandled); });
+    let attempts = 0;
+    client.connect = () => {
+      attempts++;
+      return attempts === 1 ? Promise.reject(new Error('connection unavailable')) : Promise.resolve();
+    };
+    device.connect();
+    await settle();
+    assert.deepEqual(unhandled, []);
+    assert.match(warnings[0], /10\.0\.0\.5.*connection unavailable/);
+    assert.equal(infos.filter(line => line.startsWith('Reconnecting')).length, 1);
+    t.mock.timers.tick(30_000);
+    assert.equal(attempts, 2);
+    await settle();
+  });
+
+  for (const disconnectFirst of [false, true]) {
+    it(`shares one retry timer when disconnect occurs ${disconnectFirst ? 'before' : 'after'} rejection`, async t => {
+      t.mock.timers.enable({ apis: ['setTimeout'] });
+      const { device, client, infos } = makeLoggedDevice();
+      t.after(() => device.destroy());
+      let attempts = 0;
+      client.connect = () => {
+        attempts++;
+        if (attempts > 1) {
+          return Promise.resolve();
+        }
+        if (disconnectFirst) {
+          client.emit('disconnect', 'connection unavailable');
+        }
+        return Promise.reject(new Error('connection unavailable'));
+      };
+      device.connect();
+      await settle();
+      if (!disconnectFirst) {
+        client.emit('disconnect', 'connection unavailable');
+      }
+      assert.equal(infos.filter(line => line.startsWith('Reconnecting')).length, 1);
+      t.mock.timers.tick(30_000);
+      assert.equal(attempts, 2);
+      await settle();
+    });
+  }
+
+  it('does not retry a pending connection after destroy', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { device, client, infos } = makeLoggedDevice();
+    let reject;
+    let attempts = 0;
+    client.connect = () => {
+      attempts++;
+      return new Promise((_resolve, rejectPromise) => { reject = rejectPromise; });
+    };
+    device.connect();
+    device.destroy();
+    reject(new Error('connection unavailable'));
+    await settle();
+    t.mock.timers.tick(300_000);
+    assert.equal(attempts, 1);
+    assert.equal(infos.filter(line => line.startsWith('Reconnecting')).length, 0);
+  });
+
+  it('cancels a scheduled retry on destroy', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { device, client } = makeLoggedDevice();
+    let attempts = 0;
+    client.connect = () => { attempts++; return Promise.reject(new Error('connection unavailable')); };
+    device.connect();
+    await settle();
+    device.destroy();
+    t.mock.timers.tick(300_000);
+    assert.equal(attempts, 1);
+  });
+});

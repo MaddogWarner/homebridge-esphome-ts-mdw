@@ -9,7 +9,12 @@ export default tseslint.config(
     ignores: ['dist/**', 'node_modules/**'],
   },
   {
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
     rules: {
+      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
       'quotes': ['warn', 'single'],
       'indent': ['warn', 2, { 'SwitchCase': 1 }],
       'comma-dangle': ['warn', 'always-multiline'],

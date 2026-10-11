@@ -176,10 +176,13 @@ export class ESPHomePlatform implements DynamicPlatformPlugin {
   }
 
   // Remove cached accessories a device no longer advertises. Called only after a
-  // device successfully reports its entity list, so an offline device never has
-  // its accessories pruned. This subsumes the old stateful->stateless switch
+  // device reports a complete entity list without registration failures, so it never has
+  // its accessories pruned on an incomplete pass. This subsumes the old stateful->stateless switch
   // cleanup and also covers renamed/excluded entities and host-identity drift.
-  reconcileDeviceAccessories(host: string, claimedUuids: ReadonlySet<string>): void {
+  reconcileDeviceAccessories(host: string, claimedUuids: ReadonlySet<string>, prune = true): void {
+    if (!prune) {
+      return;
+    }
     const stale = this.cachedAccessories.filter(
       accessory => this.accessoryBelongsToDevice(accessory, host) && !claimedUuids.has(accessory.UUID),
     );
