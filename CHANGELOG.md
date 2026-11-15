@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Override minimatch to patched 11.x for development tooling, with file-discovery and restart-matching regression coverage.
 
+### Changed
+
+- Require esphome-client 2.1. The command-minting tests now register their entities with the mock, which since 2.1 drops commands for undiscovered entities as the real client does. No runtime change: the plugin only commands discovered entities.
+
 ## [1.3.1] - 2026-10-11
 
 ### Security

@@ -7,16 +7,25 @@
 import assert from 'node:assert/strict';
 import { describe, it, beforeEach } from 'node:test';
 
-import { MockClient } from 'esphome-client/testing';
+import { MockClient, mockEntityDiscovery } from 'esphome-client/testing';
 import { ESPHomeDevice } from '../dist/device.js';
 
 const silentLog = { info() {}, warn() {}, error() {}, debug() {}, log() {} };
 
 // MockClient covers the whole consumer surface except connect(), which is a
 // transport concern it has no need for. The device only ever calls it once.
+// Since esphome-client 2.1 the mock drops commands for entities it has not
+// discovered, as the real client does, so the entities the tests command are
+// registered up front.
 function makeClient() {
   const client = new MockClient();
   client.connect = () => {};
+  client.populateEntities(mockEntityDiscovery({
+    switch: ['panel_switch_1'],
+    light: ['livingroom_lamp'],
+    climate: ['office_hvac'],
+    button: ['doorbell'],
+  }));
   return client;
 }
 
